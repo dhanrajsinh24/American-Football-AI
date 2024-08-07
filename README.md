@@ -1,4 +1,4 @@
-# Football Pursuit Simulation in 2022.3.27f1
+# Football Pursuit Simulation in Unity 2022.3.27f1
 
 ## Overview
 This project simulates a football player attempting to score a touchdown while being pursued by defenders. The ball carrier is controlled by the user, and the defenders are controlled by NPCs with varying speeds.
