@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 /// <summary>
@@ -6,10 +7,10 @@ using UnityEngine;
 public class FormationDefense : IDefenderStrategy
 {
     private readonly DefenderMovements _defenderMovements;
-    private int _defenderIndex;
-    private PlayerInfo _defenderInfo;
-    private PlayerInfo _targetInfo;
-    private Vector3 _formationOffset;
+    private readonly PlayerInfo _defenderInfo;
+    private readonly PlayerInfo _targetInfo;
+    private readonly int _defenderIndex;
+    private readonly Vector3 _formationOffset;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FormationDefense"/> class.
@@ -17,11 +18,11 @@ public class FormationDefense : IDefenderStrategy
     /// <param name="defenderMovements">The defender movements handler.</param>
     /// <param name="defenderInfo">Information about the defender.</param>
     /// <param name="targetInfo">Information about the target (ball carrier).</param>
-    /// <param name="allDefenders">List of all defenders.</param>
+    /// <param name="defenderIndex">Index of the defender in the formation.</param>
     /// <param name="formationOffset">The offset to maintain the formation.</param>
     public FormationDefense(DefenderMovements defenderMovements, PlayerInfo defenderInfo, PlayerInfo targetInfo, int defenderIndex, Vector3 formationOffset)
     {
-        _defenderMovements = defenderMovements;
+        _defenderMovements = defenderMovements != null ? defenderMovements : throw new ArgumentNullException(nameof(defenderMovements));
         _defenderInfo = defenderInfo;
         _targetInfo = targetInfo;
         _defenderIndex = defenderIndex;
@@ -33,7 +34,6 @@ public class FormationDefense : IDefenderStrategy
     /// </summary>
     public void Move()
     {
-        if (_defenderMovements == null) return;
         Vector3 direction = CalculatePursuitDirection(_defenderInfo, _targetInfo);
         _defenderMovements.Move(direction);
     }
@@ -47,17 +47,10 @@ public class FormationDefense : IDefenderStrategy
     /// <returns>The normalized direction vector for pursuit.</returns>
     private Vector3 CalculatePursuitDirection(PlayerInfo defender, PlayerInfo target)
     {
-        Vector3 targetPosition = target.playerTransform.position;
-        Vector3 defenderPosition = defender.playerTransform.position;
-
-        // Maintain formation by calculating the desired formation position for the defender
         Vector3 formationPosition = GetFormationPosition(defender);
-        Vector3 relativePosition = formationPosition - defenderPosition;
+        Vector3 relativePosition = formationPosition - defender.playerTransform.position;
 
-        // Calculate the distance to the formation position
         float distance = relativePosition.magnitude;
-
-        // Calculate relative speed between defender and target
         float relativeSpeed = Mathf.Sqrt(Mathf.Max(0f, defender.playerSpeed * defender.playerSpeed - target.playerSpeed * target.playerSpeed));
 
         if (relativeSpeed <= 0f || distance <= defender.playerSpeed * Time.deltaTime)
@@ -66,28 +59,11 @@ public class FormationDefense : IDefenderStrategy
             return relativePosition.normalized;
         }
 
-        // Calculate the time to tackle using the estimated relative speed
         float timeToTackle = distance / relativeSpeed;
+        Vector3 predictedTargetPosition = target.playerTransform.position + target.playerSpeed * timeToTackle * relativePosition.normalized;
+        Vector3 pursuitDirection = (predictedTargetPosition - defender.playerTransform.position).normalized;
 
-        // Predict the target's future position based on its current speed
-        Vector3 predictedTargetPosition = targetPosition + target.playerSpeed * timeToTackle * relativePosition.normalized;
-
-        // Calculate the distance to the predicted target position
-        Vector3 relativePredictedPosition = predictedTargetPosition - defenderPosition;
-        float predictedDistance = relativePredictedPosition.magnitude;
-
-        // Check if the defender can intercept the predicted target position
-        if (predictedDistance <= defender.playerSpeed * Time.deltaTime)
-        {
-            // If the defender can tackle, move towards the predicted target position
-            return relativePredictedPosition.normalized;
-        }
-        else
-        {
-            // If the defender cannot tackle, use the normal pursuit calculation
-            Vector3 tacklePoint = targetPosition + target.playerSpeed * timeToTackle * relativePosition.normalized;
-            return (tacklePoint - defenderPosition).normalized;
-        }
+        return pursuitDirection;
     }
 
     /// <summary>
@@ -97,13 +73,11 @@ public class FormationDefense : IDefenderStrategy
     /// <returns>The calculated formation position for the defender.</returns>
     private Vector3 GetFormationPosition(PlayerInfo defender)
     {
-        // Get the center of the formation around the target
         Vector3 formationCenter = _targetInfo.playerTransform.position;
 
         // Calculate the offset for each defender's position based on formation and index
         Vector3 offset = new(_formationOffset.x * (_defenderIndex % 5 - 2), 0, _formationOffset.z * (_defenderIndex / 5));
 
-        // Return the calculated formation position
         return formationCenter + offset;
     }
 }

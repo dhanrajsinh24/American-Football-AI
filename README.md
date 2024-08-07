@@ -9,7 +9,7 @@ This project simulates a football player attempting to score a touchdown while b
 ## Controls
 - Use the arrow keys or WASD to move the ball carrier.
 
-## Implementation (in scene ExerciseScene.unity)
+## Implementation (in scene Game.unity)
 Player
 - IMovable.cs: Interface to define movement behavior.
 - PlayerInitialization.cs: Manages the player initialization and positions of ball carrier and NPC defenders.

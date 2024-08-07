@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 /// <summary>
@@ -6,12 +7,12 @@ using UnityEngine;
 public class AngledPursuit : IDefenderStrategy
 {
     private readonly DefenderMovements _defenderMovements;
-    private PlayerInfo _defenderInfo;
-    private PlayerInfo _targetInfo;
+    private readonly PlayerInfo _defenderInfo;
+    private readonly PlayerInfo _targetInfo;
 
     public AngledPursuit(DefenderMovements defenderMovements, PlayerInfo defenderInfo, PlayerInfo targetInfo)
     {
-        _defenderMovements = defenderMovements;
+        _defenderMovements = defenderMovements != null ? defenderMovements : throw new ArgumentNullException(nameof(defenderMovements));
         _defenderInfo = defenderInfo;
         _targetInfo = targetInfo;
     }
@@ -21,7 +22,6 @@ public class AngledPursuit : IDefenderStrategy
     /// </summary>
     public void Move()
     {
-        if(_defenderMovements == null) return;
         Vector3 direction = CalculatePursuitDirection(_defenderInfo, _targetInfo);
         _defenderMovements.Move(direction);
     }
@@ -34,13 +34,9 @@ public class AngledPursuit : IDefenderStrategy
     /// <returns>The normalized direction vector for pursuit.</returns>
     private Vector3 CalculatePursuitDirection(PlayerInfo defender, PlayerInfo target)
     {
-        Vector3 targetPosition = target.playerTransform.position;
-        Vector3 defenderPosition = defender.playerTransform.position;
-
-        Vector3 relativePosition = targetPosition - defenderPosition;
+        Vector3 relativePosition = target.playerTransform.position - defender.playerTransform.position;
         float distance = relativePosition.magnitude;
 
-        // Calculate relative speed
         float relativeSpeed = Mathf.Sqrt(Mathf.Max(0f, defender.playerSpeed * defender.playerSpeed - target.playerSpeed * target.playerSpeed));
 
         if (relativeSpeed <= 0f || distance <= defender.playerSpeed * Time.deltaTime)
@@ -49,27 +45,11 @@ public class AngledPursuit : IDefenderStrategy
             return relativePosition.normalized;
         }
 
-        // Calculate the time to intercept using the estimated relative speed
         float timeToIntercept = distance / relativeSpeed;
 
-        // Predict the target's future position based on its current speed
-        Vector3 predictedTargetPosition = targetPosition + target.playerSpeed * timeToIntercept * relativePosition.normalized;
+        Vector3 predictedTargetPosition = target.playerTransform.position + target.playerSpeed * timeToIntercept * relativePosition.normalized;
+        Vector3 pursuitDirection = (predictedTargetPosition - defender.playerTransform.position).normalized;
 
-        // Calculate the distance to the predicted target position
-        Vector3 relativePredictedPosition = predictedTargetPosition - defenderPosition;
-        float predictedDistance = relativePredictedPosition.magnitude;
-
-        // Check if the defender can intercept the predicted target position
-        if (predictedDistance <= defender.playerSpeed * Time.deltaTime)
-        {
-            // If the defender can intercept, move towards the predicted target position
-            return relativePredictedPosition.normalized;
-        }
-        else
-        {
-            // If the defender cannot intercept, use the normal pursuit calculation
-            Vector3 tacklePoint = targetPosition + target.playerSpeed * timeToIntercept * relativePosition.normalized;
-            return (tacklePoint - defenderPosition).normalized;
-        }
+        return pursuitDirection;
     }
 }
